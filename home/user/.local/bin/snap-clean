@@ -1,0 +1,110 @@
+#!/bin/bash
+
+# Dry-run flag
+DRY_RUN=false
+
+# Help output function
+function show_help {
+    echo "Usage: $0 [-h] [-n] [-u] [-f] [-s SNAP]"
+    echo "Removes disabled snaps from Ubuntu and cleans up any associated data."
+    echo ""
+    echo "Options:"
+    echo "  -h          Show this help message and exit."
+    echo "  -n          Dry-run mode. Do not actually remove any snaps or clean up any data, but only display what would be done."
+    echo "  -u          Show used space by snap or globally."
+    echo "  -f          Show free space by snap or globally."
+    echo "  -s SNAP     Show used or free space for the specified snap only."
+}
+
+# Parse command line options
+while getopts ":hnufs:" opt; do
+  case ${opt} in
+    h )
+      show_help
+      exit 0
+      ;;
+    n )
+      DRY_RUN=true
+      ;;
+    u )
+      SHOW_USED=true
+      ;;
+    f )
+      SHOW_FREE=true
+      ;;
+    s )
+      SNAP="$OPTARG"
+      ;;
+    \? )
+      echo "Invalid option: -$OPTARG" 1>&2
+      show_help
+      exit 1
+      ;;
+    : )
+      echo "Option -$OPTARG requires an argument." 1>&2
+      show_help
+      exit 1
+      ;;
+  esac
+done
+
+# Get list of disabled snaps
+SNAPS=$(sudo snap list --all | awk '{if ($5 == "disabled") print $1}')
+
+# Check if there are any disabled snaps to remove
+if [ -z "$SNAPS" ]; then
+  echo "No disabled snaps found."
+  exit 0
+fi
+
+# Show used space if requested
+if [ "$SHOW_USED" = true ]; then
+  if [ -z "$SNAP" ]; then
+    echo "Used space by snap:"
+    for SNAP in $SNAPS
+    do
+      SIZE=$(sudo du -sh "/var/lib/snapd/snaps/$SNAP"* | awk '{print $1}')
+      echo "$SNAP: $SIZE"
+    done
+  else
+    SIZE=$(sudo du -sh "/var/lib/snapd/snaps/$SNAP"* | awk '{print $1}')
+    echo "Used space for snap $SNAP: $SIZE"
+  fi
+fi
+
+# Show free space if requested
+if [ "$SHOW_FREE" = true ]; then
+  if [ -z "$SNAP" ]; then
+    echo "Free space by snap:"
+    for SNAP in $SNAPS
+    do
+      SPACE=$(sudo df -h "/var/lib/snapd/snaps/$SNAP"* | awk '{if (NR==2) print $4}')
+      echo "$SNAP: $SPACE"
+    done
+  else
+    SPACE=$(sudo df -h "/var/lib/snapd/snaps/$SNAP"* | awk '{if (NR==2) print $4}')
+    echo "Free space for snap $SNAP: $SPACE"
+  fi
+fi
+
+# Loop through each snap and remove it
+for SNAP in $SNAPS
+do
+  echo "Removing snap: $SNAP"
+  if [ "$DRY_RUN" = true ]; then
+    echo "Dry-run mode, skipping removal."
+  else
+    sudo snap remove "$SNAP"
+    sudo rm -rf "/var/lib/snapd/snap/$SNAP"
+  fi
+done
+
+# Clean up any leftover data directories for the snaps
+if [ "$DRY_RUN" = true ]; then
+  echo "Dry-run mode, skipping data cleanup."
+else
+  echo "Cleaning up any leftover data directories."
+  sudo rm -rf /var/snap///common
+fi
+
+echo "Done."

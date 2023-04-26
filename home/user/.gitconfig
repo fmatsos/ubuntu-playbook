@@ -1,0 +1,86 @@
+######################
+##       GLOBAL     ##
+######################
+[global]
+    [user]
+        name = "Franck Matsos"
+        email = "git@franck.matsos.fr"
+	signingkey = ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICE0PswFYjshWcDMyG5QhJDYyhyFR6xa8mSW6MdB0zHI
+
+    [gpg]
+      format = ssh
+
+    [gpg "ssh"]
+      program = "/opt/1Password/op-ssh-sign"
+
+    [commit]
+      gpgsign = true
+
+    [pull]
+      rebase = true
+
+    [credential "https://github.com"]
+        helper = !/usr/bin/gh auth git-credential
+
+    [credential "https://gist.github.com"]
+        helper = !/usr/bin/gh auth git-credential
+
+    [credential "https://maurice.happyview.fr"]
+        helper = !/home/fmatsos/go/bin/glab auth git-credential
+
+######################
+##      INCLUDES    ##
+######################
+[includeIf "gitdir:~/www/afflelou/"]
+  path = ~/.config/git/.gitconfig-afflelou
+
+[includeIf "gitdir:~/www/akawaka/"]
+  path = ~/.config/git/.gitconfig-akawaka
+
+######################
+##      ALIASES     ##
+######################
+[alias]
+  # Simple shortcuts
+  ck = checkout
+  co = commit
+  st = status
+  br = branch
+  cm = commit -m
+  cp = cherry-pick
+  dc = diff --cached
+  last = log -1 HEAD
+
+  lg = log --graph --abbrev-commit --decorate --format=format:'%C(bold blue)%h%C(reset) - %C(bold green)(%ar)%C(reset) %C(white)%s%C(reset) %C(dim white)- %an%C(reset)%C(bold yellow)%d%C(reset)' --all
+  undo = reset --hard HEAD^
+  hist = log --pretty=format:\"%h %ad | %s%d [%an]\" --graph --date=short
+  squash = "!f() { git reset --soft HEAD~${1} && git commit --edit -m\"$(git log --format=%B --reverse HEAD..HEAD@{1})\"; }; f"
+  unstage = reset HEAD --
+  lga = log --graph --pretty=format:'%Cred%h%Creset -%C(auto)%d%Creset %s %Cgreen(%cr)%Creset %C(bold blue)<%an>%Creset' --abbrev-commit --date=relative
+
+  # Updates the most recent commit to include any new changes made,
+  # without changing its commit message.
+  #
+  # Caution: it will change commit hash.
+  # You should avoid amending any commits that have already been
+  # pushed to a remote repository.
+  amend = commit --amend --no-edit
+
+  # Undo last changes
+  # Deletes any changes made in the most recent commit, use with caution
+  undo = reset --hard HEAD^
+
+  # Commit changes as "WIP"
+  wip = commit -am \"WIP\"
+
+  # Changes author of the most recent commit to the values
+  # specified in the Git config file, without changing its
+  # commit message.
+  amend-author = commit --amend --no-edit --reset-author
+
+  # Clear (delete) merged branches from you local repository
+  # except for master, main, develop, preproduction and production
+  cleanup = "!git branch --merged | grep -E -v \"(^\\*|master|main|develop|preproduction|production)\" | xargs -r git branch -d"
+
+  # Get current branch name and pull it's origin
+  pullo = !git pull origin $(git symbolic-ref --short HEAD)
